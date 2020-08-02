@@ -1,7 +1,7 @@
 {
-  "name": "ui-component",
+  "name": "core-component",
   "version": "0.0.7",
-  "description": "UI Component",
+  "description": "Core Components",
   "main": "./lib/index.js",
   "types": "./src/index.ts",
   "scripts": {
@@ -24,9 +24,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com/common-ts/ui-component"
+    "url": "git@github.com/common-ts/core-component"
   },
   "keywords": [
-    "UI Component"
+    "Core Component"
   ]
 }
