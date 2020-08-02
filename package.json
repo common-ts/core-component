@@ -1,0 +1,32 @@
+{
+  "name": "ui-component",
+  "version": "0.0.7",
+  "description": "UI Component",
+  "main": "./lib/index.js",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build:lib": "tsc",
+    "clean:lib": "rimraf lib"
+  },
+  "devDependencies": {
+    "tslint": "5.10.0",
+    "typescript": "^3.3.3333"
+  },
+  "peerDependencies": {
+    "form-util": "0.0.5",
+    "metadata-x": "0.0.4",
+    "model-formatter": "0.0.4",
+    "reflectx": "0.0.9",
+    "search-utilities": "0.0.5"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com/common-ts/ui-component"
+  },
+  "keywords": [
+    "UI Component"
+  ]
+}
