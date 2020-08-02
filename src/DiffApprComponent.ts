@@ -1,5 +1,4 @@
 import {clone, diff} from 'reflectx';
-import {BaseViewComponent} from './BaseViewComponent';
 import {Locale} from './core';
 import {messageByHttpStatus, ResourceService} from './core';
 import {LoadingService} from './core';
@@ -27,9 +26,11 @@ export interface ApprService<ID> {
 export interface DiffApprService<T, ID> extends DiffService<T, ID>, ApprService<ID> {
 }
 
-export class DiffApprComponent<T, ID> extends BaseViewComponent {
-  constructor(protected service: DiffApprService<T, ID>, resourceService: ResourceService, getLocale: () => Locale, protected showMessage: (msg: string) => void, protected showError: (m: string, title?: string) => void, protected loading?: LoadingService) {
-    super(resourceService, getLocale);
+export class DiffApprComponent<T, ID> {
+  constructor(protected service: DiffApprService<T, ID>, protected resourceService: ResourceService, protected getLocale: () => Locale, protected showMessage: (msg: string) => void, protected showError: (m: string, title?: string) => void, protected loading?: LoadingService) {
+    this.resource = resourceService.resource();
+    this.back = this.back.bind(this);
+
     this.approve = this.approve.bind(this);
     this.reject = this.reject.bind(this);
     this.format = this.format.bind(this);
@@ -38,10 +39,19 @@ export class DiffApprComponent<T, ID> extends BaseViewComponent {
     this.handleNotFound = this.handleNotFound.bind(this);
     this.alertError = this.alertError.bind(this);
   }
+  resource: any;
+  protected running: boolean;
+  protected form: any;
   protected id: ID = null;
   origin = {};
   value = {};
   disabled = false;
+
+  protected back(): void {
+    try {
+      (window as any).history.back();
+    } catch (err) {}
+  }
 
   async loadData(_id: ID) {
     const x: any = _id;
