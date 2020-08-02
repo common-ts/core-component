@@ -1,14 +1,215 @@
 import {focusFirstError, readOnly} from 'form-util';
 import {format, json} from 'model-formatter';
-import {clone, makeDiff, trim} from 'reflectx';
-import {BaseComponent} from './BaseComponent';
-import {AlertService} from './core';
+import {clone, equalAll, makeDiff, setAll, setValue, trim} from 'reflectx';
+import {addParametersIntoUrl, append, buildSearchMessage, changePage, changePageSize, formatResults, getDisplayFields, handleSortEvent, initSearchable, mergeSearchModel, more, optimizeSearchModel, reset, showResults} from 'search-utilities';
+import {AlertService, messageByHttpStatus} from './core';
 import {Locale} from './core';
 import {message, ResourceService} from './core';
 import {LoadingService} from './core';
 import {UIService} from './core';
 import {MetaModel} from './core';
 import {build, buildMessageFromStatusCode, createModel, handleVersion, Metadata, ResultInfo, Status} from './edit';
+
+export class BaseViewComponent {
+  constructor(protected resourceService: ResourceService, protected getLocale: () => Locale) {
+    this.resource = resourceService.resource();
+
+    this.currencySymbol = this.currencySymbol.bind(this);
+    this.getCurrencyCode = this.getCurrencyCode.bind(this);
+    this.back = this.back.bind(this);
+  }
+  protected includeCurrencySymbol = false;
+  resource: any;
+  protected running: boolean;
+  protected form: any;
+
+  protected back(): void {
+    window.history.back();
+  }
+
+  protected currencySymbol(): boolean {
+    return this.includeCurrencySymbol;
+  }
+
+  protected getCurrencyCode(): string {
+    return (this.form ? this.form.getAttribute('currency-code') : null);
+  }
+}
+
+export interface ViewService<T, ID> {
+  metadata(): Metadata;
+  keys(): string[];
+  load(id: ID): Promise<T>;
+}
+
+export class ViewComponent<T, ID> extends BaseViewComponent {
+  constructor(protected service: ViewService<T, ID>, resourceService: ResourceService, getLocale: () => Locale, protected showError: (msg: string, title?: string) => void, protected loading?: LoadingService) {
+    super(resourceService, getLocale);
+    this.metadata = service.metadata();
+
+    this.loadData = this.loadData.bind(this);
+    this.getModelName = this.getModelName.bind(this);
+    this.showModel = this.showModel.bind(this);
+    this.getModel = this.getModel.bind(this);
+    this.handleError = this.handleError.bind(this);
+    this.handleNotFound = this.handleNotFound.bind(this);
+  }
+  protected metadata: Metadata;
+
+  async loadData(_id: ID) {
+    const id: any = _id;
+    if (id && id !== '') {
+      try {
+        this.running = true;
+        if (this.loading) {
+          this.loading.showLoading();
+        }
+        const obj = await this.service.load(id);
+        if (obj) {
+          this.showModel(obj);
+        } else {
+          this.handleNotFound(this.form);
+        }
+      } catch (err) {
+        this.handleError(err);
+      } finally {
+        this.running = false;
+        if (this.loading) {
+          this.loading.hideLoading();
+        }
+      }
+    }
+  }
+  protected handleNotFound(form?: any): void {
+    const msg = message(this.resourceService, 'error_not_found', 'error');
+    if (this.form) {
+      readOnly(form);
+    }
+    this.showError(msg.message, msg.title);
+  }
+  handleError(response: any): void {
+    const r = this.resourceService;
+    const title = r.value('error');
+    let msg = r.value('error_internal');
+    if (response) {
+      if (response.status && !isNaN(response.status)) {
+        msg = messageByHttpStatus(response.status, r);
+      }
+    }
+    this.showError(msg, title);
+  }
+
+  protected getModelName(): string {
+    return (this.metadata ? this.metadata.name : 'model');
+  }
+
+  protected showModel(model: T): void {
+    const name = this.getModelName();
+    this[name] = model;
+  }
+
+  getModel(): T {
+    const name = this.getModelName();
+    const model = this[name];
+    return model;
+  }
+}
+
+export class BaseComponent extends BaseViewComponent {
+  constructor(resourceService: ResourceService, ui: UIService, getLocale: () => Locale, protected showError: (m: string, title?: string) => void, protected loading?: LoadingService) {
+    super(resourceService, getLocale);
+    this.uiS1 = ui;
+
+    this.getModelName = this.getModelName.bind(this);
+    this.updateState = this.updateState.bind(this);
+    this.updateStateFlat = this.updateStateFlat.bind(this);
+    this.handleError = this.handleError.bind(this);
+  }
+  private uiS1: UIService;
+  /*
+  protected init() {
+    try {
+      this.loadData();
+    } catch (err) {
+      this.handleError(err);
+    }
+  }
+
+  refresh() {
+    try {
+      this.loadData();
+    } catch (err) {
+      this.handleError(err);
+    }
+  }
+  */
+  protected getModelName(): string {
+    return 'state';
+  }
+
+  protected updateState(event: any) {
+    this.updateStateFlat(event, this.getLocale());
+  }
+
+  protected updateStateFlat(e: any, locale?: Locale) {
+    const ctrl = e.currentTarget;
+    let modelName = this.getModelName();
+    if (!modelName) {
+      modelName = ctrl.form.getAttribute('model-name');
+    }
+    const type = ctrl.getAttribute('type');
+    const isPreventDefault = type && (['checkbox', 'radio'].indexOf(type.toLowerCase()) >= 0 ? false : true);
+    if (isPreventDefault) {
+      e.preventDefault();
+    }
+    if (ctrl.nodeName === 'SELECT' && ctrl.value && ctrl.classList.contains('invalid')) {
+      this.uiS1.removeErrorMessage(ctrl);
+    }
+
+    const ex = this[modelName];
+    const dataField = ctrl.getAttribute('data-field');
+    const field = (dataField ? dataField : ctrl.name);
+    if (type && type.toLowerCase() === 'checkbox') {
+      setValue(ex, field, this.uiS1.getValue(ctrl));
+    } else {
+      const v = this.uiS1.getValue(ctrl, locale);
+      // tslint:disable-next-line:triple-equals
+      if (ctrl.value != v) {
+        setValue(ex, field, v);
+      }
+    }
+  }
+
+  handleError(response: any): void {
+    this.running = false;
+    if (this.loading) {
+      this.loading.hideLoading();
+    }
+
+    const r = this.resourceService;
+    const title = r.value('error');
+    let msg = r.value('error_internal');
+    if (!response) {
+      this.showError(msg, title);
+      return;
+    }
+    const status = response.status;
+    if (status && !isNaN(status)) {
+      msg = messageByHttpStatus(status, r);
+    }
+    if (status === 403) {
+      msg = r.value('error_forbidden');
+      readOnly(this.form);
+      this.showError(msg, title);
+    } else if (status === 401) {
+      msg = r.value('error_unauthorized');
+      readOnly(this.form);
+      this.showError(msg, title);
+    } else {
+      this.showError(msg, title);
+    }
+  }
+}
 
 export interface ViewService<T, ID> {
   metadata(): Metadata;
@@ -318,5 +519,295 @@ export class EditComponent<T, ID> extends BaseComponent {
   protected handleDuplicateKey(result?: ResultInfo<T>): void {
     const msg = message(this.resourceService, 'error_duplicate_key', 'error');
     this.alertService.alertError(msg.message, msg.title);
+  }
+}
+
+
+export interface LocaleFormatter<T> {
+  format(obj: T, locale: Locale): T;
+}
+export interface SearchModel {
+  page?: number;
+  limit: number;
+  firstLimit?: number;
+  fields?: string[];
+  sort?: string;
+
+  keyword?: string;
+  excluding?: any;
+  refId?: string|number;
+}
+export interface SearchResult<T> {
+  total?: number;
+  results: T[];
+  last?: boolean;
+}
+export interface SearchService<T, S extends SearchModel> {
+  search(s: S): Promise<SearchResult<T>>;
+}
+
+export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
+  constructor(protected service: SearchService<T, S>,
+      resourceService: ResourceService,
+      protected ui: UIService,
+      getLocale: () => Locale,
+      protected showMessage: (msg: string) => void,
+      protected showError: (m: string, title?: string) => void,
+      loading?: LoadingService) {
+    super(resourceService, ui, getLocale, showError, loading);
+    this.deleteHeader = resourceService.value('msg_delete_header');
+    this.deleteConfirm = resourceService.value('msg_delete_confirm');
+    this.deleteFailed = resourceService.value('msg_delete_failed');
+    this.pageChanged = this.pageChanged.bind(this);
+  }
+  // Pagination
+  initPageSize = 20;
+  pageSize = 20;
+  pageIndex = 1;
+  itemTotal: number;
+  pageTotal: number;
+  showPaging = false;
+  append = false;
+  appendMode = false;
+  appendable = false;
+  // Sortable
+  sortField: string;
+  sortType: string;
+  sortTarget: any; // HTML element
+
+  formatter: LocaleFormatter<T>;
+  displayFields: any[];
+  initDisplayFields = false;
+  sequenceNo = 'sequenceNo';
+  triggerSearch = false;
+  tmpPageIndex: number;
+  loadTime: Date;
+
+  protected state: S;
+  private list: any[];
+  excluding: any;
+  hideFilter: boolean;
+
+  pageMaxSize = 7;
+  pageSizes: number[] = [10, 20, 40, 60, 100, 200, 400, 1000];
+
+  chkAll: any = null;
+  viewable: boolean;
+  addable: boolean;
+  editable: boolean;
+  approvable: boolean;
+  deletable: boolean;
+
+  deleteHeader: string;
+  deleteConfirm: string;
+  deleteFailed: string;
+
+  toggleFilter(event: any): void {
+    this.hideFilter = !this.hideFilter;
+  }
+  mergeSearchModel(obj: any, arrs?: string[]|any, b?: S): S {
+    return mergeSearchModel(obj, this.pageSizes, arrs, b);
+  }
+  load(s: S, autoSearch: boolean): void {
+    this.loadTime = new Date();
+    const obj2 = initSearchable(s, this);
+    this.setSearchModel(obj2);
+    const com = this;
+    if (autoSearch) {
+      setTimeout(() => {
+        com.doSearch(true);
+      }, 0);
+    }
+  }
+  protected setSearchForm(form: any): void {
+    this.form = form;
+  }
+
+  protected getSearchForm(): any {
+    return this.form;
+  }
+
+  setSearchModel(obj: S): void {
+    this.state = obj;
+  }
+
+  getSearchModel(): S {
+    const obj2 = this.ui.decodeFromForm(this.getSearchForm(), this.getLocale(), this.getCurrencyCode());
+    const obj = obj2 ? obj2 : {};
+    const obj3 = optimizeSearchModel(obj, this, this.getDisplayFields());
+    if (this.excluding) {
+      obj3.excluding = this.excluding;
+    }
+    return obj3;
+  }
+  getOriginalSearchModel(): S {
+    return this.state;
+  }
+
+  protected getDisplayFields(): string[] {
+    if (this.displayFields) {
+      return this.displayFields;
+    }
+    if (!this.initDisplayFields) {
+      if (this.getSearchForm()) {
+        this.displayFields = getDisplayFields(this.getSearchForm());
+      }
+      this.initDisplayFields = true;
+    }
+    return this.displayFields;
+  }
+  onPageSizeChanged(event: any): void {
+    const ctrl = event.currentTarget;
+    this.pageSizeChanged(Number(ctrl.value), event);
+  }
+  pageSizeChanged(size: number, event?: any): void {
+    changePageSize(this, size);
+    this.tmpPageIndex = 1;
+    this.doSearch();
+  }
+  clearKeyworkOnClick = () => {
+    this.state.keyword = '';
+  }
+  searchOnClick(event: any): void {
+    if (event && !this.getSearchForm()) {
+      this.setSearchForm(event.target.form);
+    }
+    this.resetAndSearch();
+  }
+  resetAndSearch() {
+    if (this.running === true) {
+      this.triggerSearch = true;
+      return;
+    }
+    reset(this);
+    this.tmpPageIndex = 1;
+    this.doSearch();
+  }
+  doSearch(isFirstLoad?: boolean) {
+    const listForm = this.getSearchForm();
+    if (listForm) {
+      this.ui.removeFormError(listForm);
+    }
+    const s: S = this.getSearchModel();
+    const com = this;
+    this.validateSearch(s, () => {
+      if (com.running === true) {
+        return;
+      }
+      com.running = true;
+      if (this.loading) {
+        this.loading.showLoading();
+      }
+      addParametersIntoUrl(s, isFirstLoad);
+      com.search(s);
+    });
+  }
+  async search(se: S) {
+    try {
+      const result = await this.service.search(se);
+      this.showResults(se, result);
+    } catch (err) {
+      this.handleError(err);
+    }
+  }
+  validateSearch(se: S, callback: () => void) {
+    let valid = true;
+    const listForm = this.getSearchForm();
+    if (listForm) {
+      valid = this.ui.validateForm(listForm, this.getLocale());
+    }
+    if (valid === true) {
+      callback();
+    }
+  }
+  searchError(response): void {
+    this.pageIndex = this.tmpPageIndex;
+    this.handleError(response);
+  }
+  showResults(s: SearchModel, sr: SearchResult<T>): void {
+    const com = this;
+    const results = sr.results;
+    if (results != null && results.length > 0) {
+      const locale = this.getLocale();
+      formatResults(results, this.formatter, locale, this.sequenceNo, this.pageIndex, this.pageSize, this.initPageSize);
+    }
+    const appendMode = com.appendMode;
+    showResults(s, sr, com);
+    if (appendMode === false) {
+      com.setList(results);
+      com.tmpPageIndex = s.page;
+      this.showMessage(buildSearchMessage(s, sr, this.resourceService));
+    } else {
+      if (this.append === true && s.page > 1) {
+        append(this.getList(), results);
+      } else {
+        this.setList(results);
+      }
+    }
+    this.running = false;
+    if (this.loading) {
+      this.loading.hideLoading();
+    }
+    if (this.triggerSearch === true) {
+      this.triggerSearch = false;
+      this.resetAndSearch();
+    }
+  }
+
+  setList(results: T[]) {
+    this.list = results;
+  }
+  getList(): T[] {
+    return this.list;
+  }
+
+  chkAllOnClick(event: any, selected: string): void {
+    const target = event.currentTarget;
+    const isChecked = target.checked;
+    const list = this.getList();
+    setAll(list, selected, isChecked);
+    this.handleItemOnChecked(list);
+  }
+  itemOnClick(event: any, selected: string): void {
+    const list = this.getList();
+    if (this.chkAll != null) {
+      this.chkAll.checked = equalAll(list, selected, true);
+    }
+    this.handleItemOnChecked(list);
+  }
+  handleItemOnChecked(list: any[]) {
+  }
+
+  sort(event: any): void {
+    handleSortEvent(event, this);
+    if (this.appendMode === false) {
+      this.doSearch();
+    } else {
+      this.resetAndSearch();
+    }
+  }
+
+  showMore(): void {
+    this.tmpPageIndex = this.pageIndex;
+    more(this);
+    this.doSearch();
+  }
+
+  pageChanged(event?: any): void {
+    if (this.loadTime) {
+      const now = new Date();
+      const d = Math.abs(this.loadTime.getTime() - now.getTime());
+      if (d < 220) {
+        if (event) {
+          if (event.page && event.itemsPerPage && event.page > 1) {
+            event.page = 1;
+            changePage(this, event.page, event.itemsPerPage);
+          }
+        }
+        return;
+      }
+    }
+    changePage(this, event.page, event.itemsPerPage);
+    this.doSearch();
   }
 }

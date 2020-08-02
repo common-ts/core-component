@@ -48,9 +48,7 @@ export class DiffApprComponent<T, ID> {
   disabled = false;
 
   protected back(): void {
-    try {
-      (window as any).history.back();
-    } catch (err) {}
+    window.history.back();
   }
 
   async loadData(_id: ID) {
