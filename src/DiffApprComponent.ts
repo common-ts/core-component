@@ -81,7 +81,7 @@ export class DiffApprComponent<T, ID> {
       }
     }
   }
-  protected handleNotFound(form: any) {
+  protected handleNotFound(form?: any) {
     this.disabled = true;
     this.alertError(this.resourceService.value('error_not_found'));
   }
