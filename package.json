@@ -1,6 +1,6 @@
 {
   "name": "core-component",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Core Components",
   "main": "./lib/index.js",
   "types": "./src/index.ts",
@@ -13,11 +13,11 @@
     "typescript": "^3.3.3333"
   },
   "peerDependencies": {
-    "form-util": "0.0.5",
-    "metadata-x": "0.0.4",
-    "model-formatter": "0.0.4",
-    "reflectx": "0.0.9",
-    "search-utilities": "0.0.5"
+    "form-util": "^0.0.5",
+    "metadata-x": "^0.0.4",
+    "model-formatter": "^0.0.4",
+    "reflectx": "^0.0.9",
+    "search-utilities": "^0.0.5"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
@@ -27,6 +27,7 @@
     "url": "git@github.com/common-ts/core-component"
   },
   "keywords": [
-    "Core Component"
+    "Core Component",
+    "Core Components"
   ]
 }

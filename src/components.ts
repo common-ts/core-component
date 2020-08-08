@@ -47,7 +47,7 @@ export class ViewComponent<T, ID> extends BaseViewComponent {
     super(resourceService, getLocale);
     this.metadata = service.metadata();
 
-    this.loadData = this.loadData.bind(this);
+    this.load = this.load.bind(this);
     this.getModelName = this.getModelName.bind(this);
     this.showModel = this.showModel.bind(this);
     this.getModel = this.getModel.bind(this);
@@ -56,7 +56,7 @@ export class ViewComponent<T, ID> extends BaseViewComponent {
   }
   protected metadata: Metadata;
 
-  async loadData(_id: ID) {
+  async load(_id: ID) {
     const id: any = _id;
     if (id && id !== '') {
       try {
@@ -582,6 +582,7 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
   triggerSearch = false;
   tmpPageIndex: number;
   loadTime: Date;
+  loadPage = 1;
 
   protected state: S;
   private list: any[];
@@ -611,6 +612,7 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
   load(s: S, autoSearch: boolean): void {
     this.loadTime = new Date();
     const obj2 = initSearchable(s, this);
+    this.loadPage = this.pageIndex;
     this.setSearchModel(obj2);
     const com = this;
     if (autoSearch) {
@@ -797,11 +799,10 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
     if (this.loadTime) {
       const now = new Date();
       const d = Math.abs(this.loadTime.getTime() - now.getTime());
-      if (d < 220) {
+      if (d < 610) {
         if (event) {
-          if (event.page && event.itemsPerPage && event.page > 1) {
-            event.page = 1;
-            changePage(this, event.page, event.itemsPerPage);
+          if (event.page && event.itemsPerPage && event.page !== this.loadPage) {
+            changePage(this, this.loadPage, event.itemsPerPage);
           }
         }
         return;

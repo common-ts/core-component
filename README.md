@@ -1,1 +1,1 @@
-# ui-component
+# core-component
