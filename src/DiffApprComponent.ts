@@ -70,7 +70,12 @@ export class DiffApprComponent<T, ID> {
           this.origin = formatdDiff.origin;
         }
       } catch (err) {
-        this.handleError(err);
+        const data = (err &&  err.response) ? err.response : err;
+        if (data && data.status === 404) {
+          this.handleNotFound(this.form);
+        } else {
+          this.handleError(err);
+        }
       } finally {
         this.running = false;
         if (this.loading) {
