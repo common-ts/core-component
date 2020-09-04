@@ -723,7 +723,7 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
       this.handleError(err);
     }
   }
-  validateSearch(se: S, callback: () => void) {
+  validateSearch(se: S, callback: () => void): void {
     let valid = true;
     const listForm = this.getSearchForm();
     if (listForm) {
