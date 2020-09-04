@@ -46,9 +46,10 @@ export class ViewComponent<T, ID> extends BaseViewComponent {
   constructor(protected service: ViewService<T, ID>, resourceService: ResourceService, getLocale: () => Locale, protected showError: (msg: string, title?: string) => void, protected loading?: LoadingService) {
     super(resourceService, getLocale);
     this.metadata = service.metadata();
-
-    this.load = this.load.bind(this);
     this.getModelName = this.getModelName.bind(this);
+    const n = this.getModelName();
+    this[n] = {} as any;
+    this.load = this.load.bind(this);
     this.showModel = this.showModel.bind(this);
     this.getModel = this.getModel.bind(this);
     this.handleError = this.handleError.bind(this);
@@ -239,13 +240,15 @@ export class EditComponent<T, ID> extends BaseComponent {
     protected showMessage: (msg: string) => void,
     protected ui: UIService, protected alertService: AlertService, loading?: LoadingService, patchable?: boolean, backOnSaveSuccess?: boolean) {
     super(resourceService, ui, getLocale, alertService.alertError, loading);
+    this.getModelName = this.getModelName.bind(this);
+    const n = this.getModelName();
+    this[n] = {} as any;
     this.load = this.load.bind(this);
     this.resetState = this.resetState.bind(this);
     this.handleNotFound = this.handleNotFound.bind(this);
     this.createModel = this.createModel.bind(this);
     this.formatModel = this.formatModel.bind(this);
     this.showModel = this.showModel.bind(this);
-    this.getModelName = this.getModelName.bind(this);
     this.getModel = this.getModel.bind(this);
     this.getRawModel = this.getRawModel.bind(this);
     this.metadata = service.metadata();
@@ -566,6 +569,7 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
       protected showError: (m: string, title?: string) => void,
       loading?: LoadingService) {
     super(resourceService, ui, getLocale, showError, loading);
+    this.state = {} as any;
     this.deleteHeader = resourceService.value('msg_delete_header');
     this.deleteConfirm = resourceService.value('msg_delete_confirm');
     this.deleteFailed = resourceService.value('msg_delete_failed');
