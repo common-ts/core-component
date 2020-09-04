@@ -71,7 +71,12 @@ export class ViewComponent<T, ID> extends BaseViewComponent {
           this.handleNotFound(this.form);
         }
       } catch (err) {
-        this.handleError(err);
+        const data = (err &&  err.response) ? err.response : err;
+        if (data && data.status === 404) {
+          this.handleNotFound(this.form);
+        } else {
+          this.handleError(err);
+        }
       } finally {
         this.running = false;
         if (this.loading) {
@@ -180,7 +185,7 @@ export class BaseComponent extends BaseViewComponent {
     }
   }
 
-  handleError(response: any): void {
+  handleError(err: any): void {
     this.running = false;
     if (this.loading) {
       this.loading.hideLoading();
@@ -189,22 +194,27 @@ export class BaseComponent extends BaseViewComponent {
     const r = this.resourceService;
     const title = r.value('error');
     let msg = r.value('error_internal');
-    if (!response) {
+    if (!err) {
       this.showError(msg, title);
       return;
     }
-    const status = response.status;
-    if (status && !isNaN(status)) {
-      msg = messageByHttpStatus(status, r);
-    }
-    if (status === 403) {
-      msg = r.value('error_forbidden');
-      readOnly(this.form);
-      this.showError(msg, title);
-    } else if (status === 401) {
-      msg = r.value('error_unauthorized');
-      readOnly(this.form);
-      this.showError(msg, title);
+    const data = err && err.response ? err.response : err;
+    if (data) {
+      const status = data.status;
+      if (status && !isNaN(status)) {
+        msg = messageByHttpStatus(status, r);
+      }
+      if (status === 403) {
+        msg = r.value('error_forbidden');
+        readOnly(this.form);
+        this.showError(msg, title);
+      } else if (status === 401) {
+        msg = r.value('error_unauthorized');
+        readOnly(this.form);
+        this.showError(msg, title);
+      } else {
+        this.showError(msg, title);
+      }
     } else {
       this.showError(msg, title);
     }
@@ -283,16 +293,17 @@ export class EditComponent<T, ID> extends BaseComponent {
       const com = this;
       try {
         const obj = await this.service.load(id);
-        if (callback) {
-          callback(obj);
-        }
         if (!obj) {
           com.handleNotFound(com.form);
         } else {
+          if (callback) {
+            callback(obj);
+          }
           this.resetState(false, obj, clone(obj));
         }
       } catch (err) {
-        if (err && err.status === 404) {
+        const data = (err &&  err.response) ? err.response : err;
+        if (data && data.status === 404) {
           com.handleNotFound(com.form);
         } else {
           com.handleError(err);
@@ -576,7 +587,7 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
   sortTarget: any; // HTML element
 
   formatter: LocaleFormatter<T>;
-  displayFields: any[];
+  displayFields: string[];
   initDisplayFields = false;
   sequenceNo = 'sequenceNo';
   triggerSearch = false;
@@ -585,7 +596,7 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
   loadPage = 1;
 
   protected state: S;
-  private list: any[];
+  private list: T[];
   excluding: any;
   hideFilter: boolean;
 
@@ -789,7 +800,7 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
     }
   }
 
-  showMore(): void {
+  showMore(event?: any): void {
     this.tmpPageIndex = this.pageIndex;
     more(this);
     this.doSearch();

@@ -35,7 +35,7 @@ export class DiffApprComponent<T, ID> {
     this.reject = this.reject.bind(this);
     this.format = this.format.bind(this);
     this.formatFields = this.formatFields.bind(this);
-    this.loadData = this.loadData.bind(this);
+    this.load = this.load.bind(this);
     this.handleNotFound = this.handleNotFound.bind(this);
     this.alertError = this.alertError.bind(this);
   }
@@ -51,7 +51,7 @@ export class DiffApprComponent<T, ID> {
     window.history.back();
   }
 
-  async loadData(_id: ID) {
+  async load(_id: ID) {
     const x: any = _id;
     if (x && x !== '') {
       this.id = _id;
@@ -157,7 +157,12 @@ export class DiffApprComponent<T, ID> {
         this.alertError(r.value('msg_reject_error'));
       }
     } catch (err) {
-      this.handleError(err);
+      const data = (err &&  err.response) ? err.response : err;
+      if (data && data.status === 404) {
+        this.handleNotFound();
+      } else {
+        this.handleError(err);
+      }
     } finally {
       this.disabled = true;
       this.running = false;
@@ -166,12 +171,14 @@ export class DiffApprComponent<T, ID> {
       }
     }
   }
-  handleError(response: any): void {
+  handleError(err: any): void {
     const r = this.resourceService;
     let msg = r.value('error_internal');
-    if (response) {
-      if (response.status && !isNaN(response.status)) {
-        msg = messageByHttpStatus(response.status, r);
+    if (err) {
+      const data = err.response ? err.response : err;
+      const status = data.status;
+      if (status && !isNaN(status)) {
+        msg = messageByHttpStatus(status, r);
       }
     }
     this.alertError(msg);
