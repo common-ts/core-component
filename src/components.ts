@@ -240,6 +240,17 @@ export class EditComponent<T, ID> extends BaseComponent {
     protected showMessage: (msg: string) => void,
     protected ui: UIService, protected alertService: AlertService, loading?: LoadingService, patchable?: boolean, backOnSaveSuccess?: boolean) {
     super(resourceService, ui, getLocale, alertService.alertError, loading);
+    this.metadata = service.metadata();
+    this.metamodel = build(this.metadata);
+    if (patchable === false) {
+      this.patchable = patchable;
+    }
+    if (backOnSaveSuccess === false) {
+      this.backOnSuccess = backOnSaveSuccess;
+    }
+    this.insertSuccessMsg = resourceService.value('msg_save_success');
+    this.updateSuccessMsg = resourceService.value('msg_save_success');
+
     this.getModelName = this.getModelName.bind(this);
     const n = this.getModelName();
     this[n] = {} as any;
@@ -251,8 +262,6 @@ export class EditComponent<T, ID> extends BaseComponent {
     this.showModel = this.showModel.bind(this);
     this.getModel = this.getModel.bind(this);
     this.getRawModel = this.getRawModel.bind(this);
-    this.metadata = service.metadata();
-    this.metamodel = build(this.metadata);
 
     this.newOnClick = this.newOnClick.bind(this);
     this.saveOnClick = this.saveOnClick.bind(this);
@@ -265,14 +274,6 @@ export class EditComponent<T, ID> extends BaseComponent {
     this.save = this.save.bind(this);
     this.postSave = this.postSave.bind(this);
     this.handleDuplicateKey = this.handleDuplicateKey.bind(this);
-    if (patchable === false) {
-      this.patchable = patchable;
-    }
-    if (backOnSaveSuccess === false) {
-      this.backOnSuccess = backOnSaveSuccess;
-    }
-    this.insertSuccessMsg = resourceService.value('msg_save_success');
-    this.updateSuccessMsg = resourceService.value('msg_save_success');
   }
   protected metadata: Metadata;
   protected metamodel: MetaModel;
