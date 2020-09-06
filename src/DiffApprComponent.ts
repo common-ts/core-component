@@ -10,7 +10,7 @@ export interface DiffModel<T, ID> {
 }
 export interface DiffService<T, ID> {
   keys(): string[];
-  diff(id: ID): Promise<DiffModel<T, ID>>;
+  diff(id: ID, ctx?: any): Promise<DiffModel<T, ID>>;
 }
 
 export enum Status {
@@ -20,8 +20,8 @@ export enum Status {
   Error = 4
 }
 export interface ApprService<ID> {
-  approve(id: ID): Promise<Status>;
-  reject(id: ID): Promise<Status>;
+  approve(id: ID, ctx?: any): Promise<Status>;
+  reject(id: ID, ctx?: any): Promise<Status>;
 }
 export interface DiffApprService<T, ID> extends DiffService<T, ID>, ApprService<ID> {
 }
@@ -62,7 +62,8 @@ export class DiffApprComponent<T, ID> {
         if (this.loading) {
           this.loading.showLoading();
         }
-        const dobj = await this.service.diff(_id);
+        const ctx: any = {};
+        const dobj = await this.service.diff(_id, ctx);
         if (!dobj) {
           this.handleNotFound(this.form);
         } else {
@@ -120,7 +121,8 @@ export class DiffApprComponent<T, ID> {
       if (this.loading) {
         this.loading.showLoading();
       }
-      const status = await this.service.approve(this.id);
+      const ctx: any = {};
+      const status = await this.service.approve(this.id, ctx);
       const r = this.resourceService;
       if (status === Status.Success) {
         this.showMessage(r.value('msg_approve_success'));
@@ -152,7 +154,8 @@ export class DiffApprComponent<T, ID> {
       if (this.loading) {
         this.loading.showLoading();
       }
-      const status = await this.service.reject(this.id);
+      const ctx: any = {};
+      const status = await this.service.reject(this.id, ctx);
       const r = this.resourceService;
       if (status === Status.Success) {
         this.showMessage(r.value('msg_reject_success'));

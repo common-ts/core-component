@@ -229,14 +229,14 @@ export class BaseComponent extends BaseViewComponent {
 export interface ViewService<T, ID> {
   metadata(): Metadata;
   keys(): string[];
-  load(id: ID): Promise<T>;
+  load(id: ID, ctx?: any): Promise<T>;
 }
 
 export interface GenericService<T, ID, R> extends ViewService<T, ID> {
-  patch(obj: T): Promise<R>;
-  insert(obj: T): Promise<R>;
-  update(obj: T): Promise<R>;
-  delete?(id: ID): Promise<number>;
+  patch(obj: T, ctx?: any): Promise<R>;
+  insert(obj: T, ctx?: any): Promise<R>;
+  update(obj: T, ctx?: any): Promise<R>;
+  delete?(id: ID, ctx?: any): Promise<number>;
 }
 
 export class EditComponent<T, ID> extends BaseComponent {
@@ -442,17 +442,18 @@ export class EditComponent<T, ID> extends BaseComponent {
     const isBackO = (isBack == null || isBack === undefined ? this.backOnSuccess : isBack);
     const com = this;
     try {
+      const ctx: any = {};
       if (!this.newMode) {
         if (this.patchable === true && body && Object.keys(body).length > 0) {
-          const result = await this.service.patch(body);
+          const result = await this.service.patch(body, ctx);
           com.postSave(result, isBackO);
         } else {
-          const result = await this.service.update(obj);
+          const result = await this.service.update(obj, ctx);
           com.postSave(result, isBackO);
         }
       } else {
         trim(obj);
-        const result = await this.service.insert(obj);
+        const result = await this.service.insert(obj, ctx);
         com.postSave(result, isBackO);
       }
     } catch (err) {
@@ -562,7 +563,7 @@ export interface SearchResult<T> {
   last?: boolean;
 }
 export interface SearchService<T, S extends SearchModel> {
-  search(s: S): Promise<SearchResult<T>>;
+  search(s: S, ctx?: any): Promise<SearchResult<T>>;
 }
 
 export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
@@ -726,7 +727,8 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
   }
   async search(se: S) {
     try {
-      const result = await this.service.search(se);
+      const ctx: any =  {};
+      const result = await this.service.search(se, ctx);
       this.showResults(se, result);
     } catch (err) {
       this.handleError(err);
