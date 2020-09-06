@@ -27,7 +27,9 @@ export interface DiffApprService<T, ID> extends DiffService<T, ID>, ApprService<
 }
 
 export class DiffApprComponent<T, ID> {
-  constructor(protected service: DiffApprService<T, ID>, protected resourceService: ResourceService, protected getLocale: () => Locale, protected showMessage: (msg: string) => void, protected showError: (m: string, title?: string) => void, protected loading?: LoadingService) {
+  constructor(protected service: DiffApprService<T, ID>, protected resourceService: ResourceService, protected getLocale: () => Locale, protected showMessage: (msg: string) => void,
+      protected showError: (m: string, title?: string, detail?: string, callback?: () => void) => void,
+      protected loading?: LoadingService) {
     this.resource = resourceService.resource();
     this.back = this.back.bind(this);
 

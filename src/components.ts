@@ -2,7 +2,7 @@ import {focusFirstError, readOnly} from 'form-util';
 import {format, json} from 'model-formatter';
 import {clone, equalAll, makeDiff, setAll, setValue, trim} from 'reflectx';
 import {addParametersIntoUrl, append, buildSearchMessage, changePage, changePageSize, formatResults, getDisplayFields, handleSortEvent, initSearchable, mergeSearchModel, more, optimizeSearchModel, reset, showResults} from 'search-utilities';
-import {AlertService, messageByHttpStatus} from './core';
+import {messageByHttpStatus} from './core';
 import {Locale} from './core';
 import {message, ResourceService} from './core';
 import {LoadingService} from './core';
@@ -43,7 +43,9 @@ export interface ViewService<T, ID> {
 }
 
 export class ViewComponent<T, ID> extends BaseViewComponent {
-  constructor(protected service: ViewService<T, ID>, resourceService: ResourceService, getLocale: () => Locale, protected showError: (msg: string, title?: string) => void, protected loading?: LoadingService) {
+  constructor(protected service: ViewService<T, ID>, resourceService: ResourceService, getLocale: () => Locale,
+      protected showError: (msg: string, title?: string, detail?: string, callback?: () => void) => void,
+      protected loading?: LoadingService) {
     super(resourceService, getLocale);
     this.metadata = service.metadata();
     this.getModelName = this.getModelName.bind(this);
@@ -122,7 +124,9 @@ export class ViewComponent<T, ID> extends BaseViewComponent {
 }
 
 export class BaseComponent extends BaseViewComponent {
-  constructor(resourceService: ResourceService, ui: UIService, getLocale: () => Locale, protected showError: (m: string, title?: string) => void, protected loading?: LoadingService) {
+  constructor(resourceService: ResourceService, ui: UIService, getLocale: () => Locale,
+      protected showError: (m: string, title?: string, detail?: string, callback?: () => void) => void,
+      protected loading?: LoadingService) {
     super(resourceService, getLocale);
     this.uiS1 = ui;
 
@@ -236,10 +240,14 @@ export interface GenericService<T, ID, R> extends ViewService<T, ID> {
 }
 
 export class EditComponent<T, ID> extends BaseComponent {
-  constructor(protected service: GenericService<T, ID, number|ResultInfo<T>>, resourceService: ResourceService, getLocale: () => Locale,
-    protected showMessage: (msg: string) => void,
-    protected ui: UIService, protected alertService: AlertService, loading?: LoadingService, patchable?: boolean, backOnSaveSuccess?: boolean) {
-    super(resourceService, ui, getLocale, alertService.alertError, loading);
+  constructor(protected service: GenericService<T, ID, number|ResultInfo<T>>, resourceService: ResourceService,
+      protected ui: UIService,
+      getLocale: () => Locale,
+      protected showMessage: (msg: string) => void,
+      protected showError: (m: string, title?: string, detail?: string, callback?: () => void) => void,
+      protected confirm: (m2, header: string, yesCallback?: () => void, btnLeftText?: string, btnRightText?: string, noCallback?: () => void) => void,
+      loading?: LoadingService, patchable?: boolean, backOnSaveSuccess?: boolean) {
+    super(resourceService, ui, getLocale, showError, loading);
     this.metadata = service.metadata();
     this.metamodel = build(this.metadata);
     if (patchable === false) {
@@ -333,7 +341,7 @@ export class EditComponent<T, ID> extends BaseComponent {
     if (this.form) {
       readOnly(form);
     }
-    this.alertService.alertError(msg.message, msg.title);
+    this.showError(msg.message, msg.title);
   }
   protected formatModel(obj: T): void {
     format(obj, this.metamodel, this.getLocale(), this.getCurrencyCode(), this.currencySymbol());
@@ -394,11 +402,11 @@ export class EditComponent<T, ID> extends BaseComponent {
     const r = this.resourceService;
     if (this.newMode && this.addable !== true) {
       const msg = message(r, 'error_permission_add', 'error_permission');
-      this.alertService.alertError(msg.message, msg.title);
+      this.showError(msg.message, msg.title);
       return;
     } else if (!this.newMode && this.editable !== true) {
       const msg = message(r, 'error_permission_edit', 'error_permission');
-      this.alertService.alertError(msg.message, msg.title);
+      this.showError(msg.message, msg.title);
       return;
     } else {
       if (this.running === true) {
@@ -419,9 +427,6 @@ export class EditComponent<T, ID> extends BaseComponent {
         });
       }
     }
-  }
-  protected confirm(msg: string, title: string, yesCallback?: () => void, btnLeftText?: string, btnRightText?: string, noCallback?: () => void) {
-    this.alertService.confirm(msg, title, yesCallback, btnLeftText, btnRightText, noCallback);
   }
   validate(obj: T, callback: (u?: T) => void): void {
     const valid = this.ui.validateForm(this.form, this.getLocale());
@@ -489,7 +494,7 @@ export class EditComponent<T, ID> extends BaseComponent {
         result.message = u.buildErrorMessage(unmappedErrors);
       }
     }
-    this.alertService.alertError(result.message);
+    this.showError(result.message);
   }
   protected postSave(res: number|ResultInfo<T>, backOnSave: boolean): void {
     this.running = false;
@@ -522,21 +527,20 @@ export class EditComponent<T, ID> extends BaseComponent {
         const r = this.resourceService;
         const title = r.value('error');
         if (msg && msg.length > 0) {
-          this.alertService.alertError(msg, title);
+          this.showError(msg, title);
         } else if (result.message && result.message.length > 0) {
-          this.alertService.alertError(result.message, title);
+          this.showError(result.message, title);
         } else {
-          this.alertService.alertError(r.value('error_internal'), title);
+          this.showError(r.value('error_internal'), title);
         }
       }
     }
   }
   protected handleDuplicateKey(result?: ResultInfo<T>): void {
     const msg = message(this.resourceService, 'error_duplicate_key', 'error');
-    this.alertService.alertError(msg.message, msg.title);
+    this.showError(msg.message, msg.title);
   }
 }
-
 
 export interface LocaleFormatter<T> {
   format(obj: T, locale: Locale): T;
@@ -567,7 +571,7 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
       protected ui: UIService,
       getLocale: () => Locale,
       protected showMessage: (msg: string) => void,
-      protected showError: (m: string, title?: string) => void,
+      protected showError: (m: string, header?: string, detail?: string, callback?: () => void) => void,
       loading?: LoadingService) {
     super(resourceService, ui, getLocale, showError, loading);
     this.state = {} as any;
