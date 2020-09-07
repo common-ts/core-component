@@ -134,7 +134,12 @@ export class DiffApprComponent<T, ID> {
         this.alertError(r.value('msg_approve_version_error'));
       }
     } catch (err) {
-      this.handleError(err);
+      const data = (err &&  err.response) ? err.response : err;
+      if (data && data.status === 404) {
+        this.handleNotFound();
+      } else {
+        this.handleError(err);
+      }
     } finally {
       this.disabled = true;
       this.running = false;
