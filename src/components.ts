@@ -131,6 +131,7 @@ export class BaseComponent extends BaseViewComponent {
     this.uiS1 = ui;
 
     this.getModelName = this.getModelName.bind(this);
+    this.includes = this.includes.bind(this);
     this.updateState = this.updateState.bind(this);
     this.updateStateFlat = this.updateStateFlat.bind(this);
     this.handleError = this.handleError.bind(this);
@@ -156,11 +157,12 @@ export class BaseComponent extends BaseViewComponent {
   protected getModelName(): string {
     return 'state';
   }
-
+  protected includes(checkedList: Array<string|number>, v: string|number): boolean {
+    return v && checkedList &&  Array.isArray(checkedList) ? checkedList.includes(v) : false;
+  }
   protected updateState(event: any) {
     this.updateStateFlat(event, this.getLocale());
   }
-
   protected updateStateFlat(e: any, locale?: Locale) {
     const ctrl = e.currentTarget;
     let modelName = this.getModelName();
@@ -414,15 +416,24 @@ export class EditComponent<T, ID> extends BaseComponent {
       }
       const com = this;
       const obj = com.getModel();
-      const diffObj = makeDiff(this.orginalModel, obj, this.metamodel.keys, this.metamodel.version);
-      const l = Object.keys(diffObj).length;
-      if (!this.newMode && l === 0) {
-        this.showMessage(r.value('msg_no_change'));
+      if (!this.newMode) {
+        const diffObj = makeDiff(this.orginalModel, obj, this.metamodel.keys, this.metamodel.version);
+        const l = Object.keys(diffObj).length;
+        if (l === 0) {
+          this.showMessage(r.value('msg_no_change'));
+        } else {
+          com.validate(obj, () => {
+            const msg = message(r, 'msg_confirm_save', 'confirm', 'yes', 'no');
+            this.confirm(msg.message, msg.title, () => {
+              com.save(obj, diffObj, isBack);
+            }, msg.no, msg.yes);
+          });
+        }
       } else {
         com.validate(obj, () => {
           const msg = message(r, 'msg_confirm_save', 'confirm', 'yes', 'no');
           this.confirm(msg.message, msg.title, () => {
-            com.save(obj, diffObj, isBack);
+            com.save(obj, obj, isBack);
           }, msg.no, msg.yes);
         });
       }
