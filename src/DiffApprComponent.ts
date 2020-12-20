@@ -1,7 +1,5 @@
 import {clone, diff} from 'reflectx';
-import {Locale} from './core';
-import {messageByHttpStatus, ResourceService} from './core';
-import {LoadingService} from './core';
+import {error, LoadingService, ResourceService, StringMessages} from './core';
 
 export interface DiffModel<T, ID> {
   id?: ID;
@@ -27,7 +25,9 @@ export interface DiffApprService<T, ID> extends DiffService<T, ID>, ApprService<
 }
 
 export class DiffApprComponent<T, ID> {
-  constructor(protected service: DiffApprService<T, ID>, protected resourceService: ResourceService, protected getLocale: () => Locale, protected showMessage: (msg: string) => void,
+  constructor(protected service: DiffApprService<T, ID>,
+      protected resourceService: ResourceService,
+      protected showMessage: (msg: string) => void,
       protected showError: (m: string, title?: string, detail?: string, callback?: () => void) => void,
       protected loading?: LoadingService) {
     this.resource = resourceService.resource();
@@ -39,12 +39,11 @@ export class DiffApprComponent<T, ID> {
     this.formatFields = this.formatFields.bind(this);
     this.load = this.load.bind(this);
     this.handleNotFound = this.handleNotFound.bind(this);
-    this.alertError = this.alertError.bind(this);
   }
-  resource: any;
+  resource: StringMessages;
   protected running: boolean;
   protected form: any;
-  protected id: ID = null;
+  protected id: ID;
   origin = {};
   value = {};
   disabled = false;
@@ -77,7 +76,7 @@ export class DiffApprComponent<T, ID> {
         if (data && data.status === 404) {
           this.handleNotFound(this.form);
         } else {
-          this.handleError(err);
+          error(err, this.resourceService, this.showError);
         }
       } finally {
         this.running = false;
@@ -89,7 +88,8 @@ export class DiffApprComponent<T, ID> {
   }
   protected handleNotFound(form?: any) {
     this.disabled = true;
-    this.alertError(this.resourceService.value('error_not_found'));
+    const r = this.resourceService;
+    this.showError(r.value('error_not_found'), r.value('error'));
   }
 
   format(origin: T, value: T): void {
@@ -116,6 +116,7 @@ export class DiffApprComponent<T, ID> {
     if (this.running) {
       return;
     }
+    const r = this.resourceService;
     try {
       this.running = true;
       if (this.loading) {
@@ -123,7 +124,6 @@ export class DiffApprComponent<T, ID> {
       }
       const ctx: any = {};
       const status = await this.service.approve(this.id, ctx);
-      const r = this.resourceService;
       if (status === Status.Success) {
         this.showMessage(r.value('msg_approve_success'));
       } else if (status === Status.VersionError) {
@@ -131,14 +131,20 @@ export class DiffApprComponent<T, ID> {
       } else if (status === Status.NotFound) {
         this.handleNotFound(this.form);
       } else {
-        this.alertError(r.value('msg_approve_version_error'));
+        const title = r.value('error');
+        const msg = r.value('error_internal');
+        this.showError(msg, title);
       }
     } catch (err) {
       const data = (err &&  err.response) ? err.response : err;
-      if (data && data.status === 404) {
-        this.handleNotFound();
+      if (data && (data.status === 404 || data.status === 409)) {
+        if (data.status === 404) {
+          this.handleNotFound();
+        } else {
+          this.showMessage(r.value('msg_approve_version_error'));
+        }
       } else {
-        this.handleError(err);
+        error(err, r, this.showError);
       }
     } finally {
       this.disabled = true;
@@ -154,6 +160,7 @@ export class DiffApprComponent<T, ID> {
     if (this.running) {
       return;
     }
+    const r = this.resourceService;
     try {
       this.running = true;
       if (this.loading) {
@@ -161,7 +168,6 @@ export class DiffApprComponent<T, ID> {
       }
       const ctx: any = {};
       const status = await this.service.reject(this.id, ctx);
-      const r = this.resourceService;
       if (status === Status.Success) {
         this.showMessage(r.value('msg_reject_success'));
       } else if (status === Status.VersionError) {
@@ -169,14 +175,20 @@ export class DiffApprComponent<T, ID> {
       } else if (status === Status.NotFound) {
         this.handleNotFound(this.form);
       } else {
-        this.alertError(r.value('msg_reject_error'));
+        const title = r.value('error');
+        const msg = r.value('error_internal');
+        this.showError(msg, title);
       }
     } catch (err) {
       const data = (err &&  err.response) ? err.response : err;
-      if (data && data.status === 404) {
-        this.handleNotFound();
+      if (data && (data.status === 404 || data.status === 409)) {
+        if (data.status === 404) {
+          this.handleNotFound();
+        } else {
+          this.showMessage(r.value('msg_approve_version_error'));
+        }
       } else {
-        this.handleError(err);
+        error(err, r, this.showError);
       }
     } finally {
       this.disabled = true;
@@ -185,22 +197,6 @@ export class DiffApprComponent<T, ID> {
         this.loading.hideLoading();
       }
     }
-  }
-  handleError(err: any): void {
-    const r = this.resourceService;
-    let msg = r.value('error_internal');
-    if (err) {
-      const data = err.response ? err.response : err;
-      const status = data.status;
-      if (status && !isNaN(status)) {
-        msg = messageByHttpStatus(status, r);
-      }
-    }
-    this.alertError(msg);
-  }
-  protected alertError(msg: string): void {
-    const title = this.resourceService.value('error');
-    this.showError(msg, title);
   }
 }
 

@@ -1,9 +1,26 @@
+export enum Type {
+  ObjectId = 'ObjectId',
+  Date = 'date',
+  Boolean = 'boolean',
+
+  Number = 'number',
+  Integer = 'integer',
+  String = 'string',
+  Text = 'text',
+
+  Object = 'object',
+  Array = 'array',
+  Primitives =  'primitives',
+  Binary = 'binary'
+}
 export interface ResourceService {
-  resource(): any;
+  resource(): StringMessages;
   value(key: string, param?: any): string;
   format(...args: any[]): string;
 }
-
+export interface StringMessages {
+  [key: string]: string;
+}
 export interface Message {
   message: string;
   title?: string;
@@ -85,9 +102,22 @@ export interface AlertService {
 }
 
 export interface Model {
-  attributes: any;
+  name?: string;
+  attributes: Attributes;
+  source?: string;
 }
-
+export interface Attributes {
+  [key: string]: Attribute;
+}
+export interface Attribute {
+  name?: string;
+  field?: string;
+  type: Type;
+  key?: boolean;
+  version?: boolean;
+  ignored?: boolean;
+  typeof?: Model;
+}
 export interface MetaModel {
   model: Model;
   attributeName?: string;
@@ -101,4 +131,38 @@ export interface MetaModel {
   objectFields?: MetaModel[];
   arrayFields?: MetaModel[];
   version?: string;
+}
+export function error(err: any, r: ResourceService, alertError: (msg: string, header?: string, detail?: string, callback?: () => void) => void) {
+  const title = r.value('error');
+  let msg = r.value('error_internal');
+  if (!err) {
+    alertError(msg, title);
+    return;
+  }
+  const data = err && err.response ? err.response : err;
+  if (data) {
+    const status = data.status;
+    if (status && !isNaN(status)) {
+      msg = messageByHttpStatus(status, r);
+    }
+    alertError(msg, title);
+  } else {
+    alertError(msg, title);
+  }
+}
+export function getModelName(form: any): string {
+  if (form) {
+    const a = form.getAttribute('model-name');
+    if (a && a.length > 0) {
+      return a;
+    }
+    const b = form.name;
+    if (b) {
+      if (b.endsWith('Form')) {
+        return b.substr(0, b.length - 4);
+      }
+      return b;
+    }
+  }
+  return '';
 }

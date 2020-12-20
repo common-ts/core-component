@@ -9,15 +9,13 @@
     "clean:lib": "rimraf lib"
   },
   "devDependencies": {
+    "form-util": "^0.0.5",
+    "metadata-x": "^0.0.5",
+    "model-formatter": "^0.0.5",
+    "reflectx": "^0.0.9",
+    "search-utilities": "^0.0.5",
     "tslint": "5.10.0",
     "typescript": "^3.3.3333"
-  },
-  "peerDependencies": {
-    "form-util": "^0.0.5",
-    "metadata-x": "^0.0.4",
-    "model-formatter": "^0.0.4",
-    "reflectx": "^0.0.9",
-    "search-utilities": "^0.0.5"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
