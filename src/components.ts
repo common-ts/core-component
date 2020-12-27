@@ -2,14 +2,21 @@ import {focusFirstError, readOnly} from 'form-util';
 import {format, json} from 'model-formatter';
 import {clone, equalAll, makeDiff, setAll, setValue, trim} from 'reflectx';
 import {addParametersIntoUrl, append, buildSearchMessage, changePage, changePageSize, formatResults, getDisplayFields, handleSortEvent, initSearchable, mergeSearchModel, more, optimizeSearchModel, reset, showResults} from 'search-utilities';
-import {error, getModelName, StringMessages} from './core';
-import {Locale} from './core';
-import {message, ResourceService} from './core';
-import {LoadingService} from './core';
-import {UIService} from './core';
-import {MetaModel} from './core';
+import {error, getModelName, LoadingService, Locale, ResourceService, message, MetaModel, StringMap, UIService} from './core';
 import {build, buildMessageFromStatusCode, createModel, handleVersion, Metadata, ResultInfo, Status} from './edit';
 
+export const enLocale = {
+  'id': 'en-US',
+  'countryCode': 'US',
+  'dateFormat': 'M/d/yyyy',
+  'firstDayOfWeek': 1,
+  'decimalSeparator': '.',
+  'groupSeparator': ',',
+  'decimalDigits': 2,
+  'currencyCode': 'USD',
+  'currencySymbol': '$',
+  'currencyPattern': 0
+};
 export class MessageComponent {
   constructor(protected resourceService?: ResourceService) {
     if (resourceService) {
@@ -19,7 +26,7 @@ export class MessageComponent {
     this.showError = this.showError.bind(this);
     this.hideMessage = this.hideMessage.bind(this);
   }
-  resource: StringMessages;
+  resource: StringMap;
   message = '';
   alertClass = '';
 
@@ -44,7 +51,7 @@ export class BaseViewComponent {
     this.back = this.back.bind(this);
   }
   protected includeCurrencySymbol: boolean;
-  protected resource: StringMessages;
+  protected resource: StringMap;
   protected running: boolean;
   protected form: any;
 
@@ -205,9 +212,16 @@ export class BaseComponent extends BaseViewComponent {
     return v && checkedList &&  Array.isArray(checkedList) ? checkedList.includes(v) : false;
   }
   protected updateState(event: any) {
-    this.updateStateFlat(event, this.getLocale());
+    let locale: Locale = enLocale;
+    if (this.getLocale) {
+      locale = this.getLocale();
+    }
+    this.updateStateFlat(event, locale);
   }
   protected updateStateFlat(e: any, locale?: Locale) {
+    if (!locale) {
+      locale = enLocale;
+    }
     const ctrl = e.currentTarget;
     let modelName = this.getModelName();
     if (!modelName) {
@@ -348,7 +362,11 @@ export class EditComponent<T, ID> extends BaseComponent {
     this.showError(msg.message, msg.title);
   }
   protected formatModel(obj: T): void {
-    format(obj, this.metamodel, this.getLocale(), this.getCurrencyCode(), this.currencySymbol());
+    let locale: Locale = enLocale;
+    if (this.getLocale) {
+      locale = this.getLocale();
+    }
+    format(obj, this.metamodel, locale, this.getCurrencyCode(), this.currencySymbol());
   }
   protected getModelName(): string {
     if (this.metadata) {
@@ -372,7 +390,11 @@ export class EditComponent<T, ID> extends BaseComponent {
     const name = this.getModelName();
     const model = this[name];
     const obj = clone(model);
-    json(obj, this.metamodel, this.getLocale(), this.getCurrencyCode());
+    let locale: Locale = enLocale;
+    if (this.getLocale) {
+      locale = this.getLocale();
+    }
+    json(obj, this.metamodel, locale, this.getCurrencyCode());
     return obj;
   }
   protected createModel(): T {
@@ -448,7 +470,11 @@ export class EditComponent<T, ID> extends BaseComponent {
     }
   }
   validate(obj: T, callback: (u?: T) => void): void {
-    const valid = this.ui.validateForm(this.form, this.getLocale());
+    let locale: Locale = enLocale;
+    if (this.getLocale) {
+      locale = this.getLocale();
+    }
+    const valid = this.ui.validateForm(this.form, locale);
     if (valid) {
       callback(obj);
     }
@@ -606,6 +632,32 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
         }
       }
     }
+    this.showMessage = this.showMessage.bind(this);
+
+    this.toggleFilter = this.toggleFilter.bind(this);
+    this.mergeSearchModel = this.mergeSearchModel.bind(this);
+    this.load = this.load.bind(this);
+    this.getSearchForm = this.getSearchForm.bind(this);
+    this.setSearchForm = this.setSearchForm.bind(this);
+
+    this.setSearchModel = this.setSearchModel.bind(this);
+    this.getOriginalSearchModel = this.getOriginalSearchModel.bind(this);
+    this.getSearchModel = this.getSearchModel.bind(this);
+    this.getDisplayFields = this.getDisplayFields.bind(this);
+
+    this.pageSizeChanged = this.pageSizeChanged.bind(this);
+    this.searchOnClick = this.searchOnClick.bind(this);
+
+    this.resetAndSearch = this.resetAndSearch.bind(this);
+    this.doSearch = this.doSearch.bind(this);
+    this.search = this.search.bind(this);
+    this.validateSearch = this.validateSearch.bind(this);
+    this.showResults = this.showResults.bind(this);
+    this.setList = this.setList.bind(this);
+    this.getList = this.getList.bind(this);
+    this.sort = this.sort.bind(this);
+    this.showMore = this.showMore.bind(this);
+    this.pageChanged = this.pageChanged.bind(this);
     this.deleteHeader = resourceService.value('msg_delete_header');
     this.deleteConfirm = resourceService.value('msg_delete_confirm');
     this.deleteFailed = resourceService.value('msg_delete_failed');
@@ -691,7 +743,11 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
   }
 
   getSearchModel(): S {
-    const obj2 = this.ui.decodeFromForm(this.getSearchForm(), this.getLocale(), this.getCurrencyCode());
+    let locale: Locale = enLocale;
+    if (this.getLocale) {
+      locale = this.getLocale();
+    }
+    const obj2 = this.ui.decodeFromForm(this.getSearchForm(), locale, this.getCurrencyCode());
     const obj = obj2 ? obj2 : {};
     const obj3 = optimizeSearchModel(obj, this, this.getDisplayFields());
     if (this.excluding) {
@@ -793,7 +849,11 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
     let valid = true;
     const listForm = this.getSearchForm();
     if (listForm) {
-      valid = this.ui.validateForm(listForm, this.getLocale());
+      let locale: Locale = enLocale;
+      if (this.getLocale) {
+        locale = this.getLocale();
+      }
+      valid = this.ui.validateForm(listForm, locale);
     }
     if (valid === true) {
       callback();
@@ -807,7 +867,10 @@ export class SearchComponent<T, S extends SearchModel> extends BaseComponent {
     const com = this;
     const results = sr.results;
     if (results != null && results.length > 0) {
-      const locale = this.getLocale();
+      let locale: Locale = enLocale;
+      if (this.getLocale) {
+        locale = this.getLocale();
+      }
       formatResults(results, this.formatter, locale, this.sequenceNo, this.pageIndex, this.pageSize, this.initPageSize);
     }
     const appendMode = com.appendMode;

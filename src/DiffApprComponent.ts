@@ -1,5 +1,5 @@
 import {clone, diff} from 'reflectx';
-import {error, LoadingService, ResourceService, StringMessages} from './core';
+import {error, LoadingService, ResourceService, StringMap} from './core';
 
 export interface DiffModel<T, ID> {
   id?: ID;
@@ -40,7 +40,7 @@ export class DiffApprComponent<T, ID> {
     this.load = this.load.bind(this);
     this.handleNotFound = this.handleNotFound.bind(this);
   }
-  resource: StringMessages;
+  resource: StringMap;
   protected running: boolean;
   protected form: any;
   protected id: ID;

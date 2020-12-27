@@ -13,13 +13,13 @@ export enum Type {
   Primitives =  'primitives',
   Binary = 'binary'
 }
+export interface StringMap {
+  [key: string]: string;
+}
 export interface ResourceService {
-  resource(): StringMessages;
+  resource(): StringMap;
   value(key: string, param?: any): string;
   format(...args: any[]): string;
-}
-export interface StringMessages {
-  [key: string]: string;
 }
 export interface Message {
   message: string;
