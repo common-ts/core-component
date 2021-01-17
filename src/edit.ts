@@ -1,21 +1,5 @@
 import {build as build2, MetaModel} from 'metadata-x';
-import {ResourceService} from './core';
-
-enum Type {
-  ObjectId = 'ObjectId',
-  Date = 'date',
-  Boolean = 'boolean',
-
-  Number = 'number',
-  Integer = 'integer',
-  String = 'string',
-  Text = 'text',
-
-  Object = 'object',
-  Array = 'array',
-  Primitives =  'primitives',
-  Binary = 'binary'
-}
+import {ResourceService, Type} from './core';
 
 interface ErrorMessage {
   field: string;

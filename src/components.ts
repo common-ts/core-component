@@ -2,7 +2,7 @@ import {focusFirstError, readOnly} from 'form-util';
 import {format, json} from 'model-formatter';
 import {clone, equalAll, makeDiff, setAll, setValue, trim} from 'reflectx';
 import {addParametersIntoUrl, append, buildSearchMessage, changePage, changePageSize, formatResults, getDisplayFields, handleSortEvent, initSearchable, mergeSearchModel, more, optimizeSearchModel, reset, showResults} from 'search-utilities';
-import {error, getModelName, LoadingService, Locale, ResourceService, message, MetaModel, StringMap, UIService} from './core';
+import {error, getModelName, LoadingService, Locale, message, MetaModel, ResourceService, StringMap, UIService} from './core';
 import {build, buildMessageFromStatusCode, createModel, handleVersion, Metadata, ResultInfo, Status} from './edit';
 
 export const enLocale = {
